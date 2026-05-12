@@ -44,26 +44,44 @@ const SHEET_COLUMNS = {
   },
   REGISTROS: {
     id: 0,
-    timestamp: 1,
-    id_usuario: 2,
-    id_etapa: 3,
-    observacion: 4,
-    aprobado: 5,
-    url: 6,
+    id_usuario: 1,
+    id_actividad: 2,
+    id_solicitud: 3,
+    timestamp: 4,
+    observacion: 5,
+    aprobado: 6,
+    url: 7,
   },
   SOLICITUDES: {
     id: 0,
     id_usuario: 1,
-    etapa_actual: 2,
-    fecha: 3,
+    id_proceso: 2,
+    actividad_actual: 3,
+    fecha: 4,
   },
-  CONVENIOS_ETAPAS: {
+  ACTIVIDADES: {
     id: 0,
-    nombre: 1,
-    actor: 2,
-    tiempo_max: 3,
-    orden: 4,
+    id_proceso: 1,
+    id_adjunto:2,
+    nombre: 3,
+    tiempo_max: 4,
+    orden: 5,
   },
+  ADJUNTOS_ACTIVIDADES: {
+    id: 0,
+    id_actividad: 1,
+    nombre: 2,
+  },
+    ACTIVIDAD_ACTOR:{
+     id: 0,
+     id_actividad: 1,
+     nombre: 2, 
+    },
+    PROCESOS:{
+      id: 0,
+      nombre: 1,
+    },
+  
 };
 
 function columnIndexToLetter(index) {
@@ -89,11 +107,106 @@ async function getSheetRows(sheets, spreadsheetId, sheetName) {
   return response.data.values || [];
 }
 
+function rowsToObjectsWithColumns(rows = [], columns = {}, options = {}) {
+  const { idKey = 'id', skipEmpty = true } = options;
+
+  if (!rows.length) {
+    return [];
+  }
+
+  const dataRows = rows.slice(1);
+
+  return dataRows
+    .map((row) => {
+      return Object.entries(columns).reduce((rowObject, [key, index]) => {
+        rowObject[key] = row[index] ?? '';
+        return rowObject;
+      }, {});
+    })
+    .filter((rowObject) => {
+      if (!skipEmpty || !idKey) {
+        return true;
+      }
+
+      const idValue = rowObject[idKey];
+      return idValue !== '' && idValue !== undefined && idValue !== null;
+    });
+}
+
+function groupByKey(items = [], key) {
+  return items.reduce((acc, item) => {
+    const groupKey = String(item[key] ?? '').trim();
+    if (!groupKey) {
+      return acc;
+    }
+
+    if (!acc[groupKey]) {
+      acc[groupKey] = [];
+    }
+
+    acc[groupKey].push(item);
+    return acc;
+  }, {});
+}
+
+function getOrdenValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function sortActividadesByProcesoYOrden(actividades = []) {
+  return [...actividades].sort((a, b) => {
+    const procesoA = String(a.id_proceso ?? '').trim();
+    const procesoB = String(b.id_proceso ?? '').trim();
+
+    if (procesoA < procesoB) {
+      return -1;
+    }
+
+    if (procesoA > procesoB) {
+      return 1;
+    }
+
+    return getOrdenValue(a.orden) - getOrdenValue(b.orden);
+  });
+}
+
+function sortActividadesByOrden(actividades = []) {
+  return [...actividades].sort((a, b) => getOrdenValue(a.orden) - getOrdenValue(b.orden));
+}
+
 function findRowNumber(rows, predicate) {
   const dataRows = rows.slice(1);
   const index = dataRows.findIndex(predicate);
 
   return index === -1 ? -1 : index + 2;
+}
+
+async function getActividadesConRelaciones(sheets, spreadsheetId) {
+  const [actividadesRows, actoresRows, adjuntosRows] = await Promise.all([
+    getSheetRows(sheets, spreadsheetId, 'ACTIVIDADES'),
+    getSheetRows(sheets, spreadsheetId, 'ACTIVIDAD_ACTOR'),
+    getSheetRows(sheets, spreadsheetId, 'ADJUNTOS_ACTIVIDADES'),
+  ]);
+
+  const actividades = rowsToObjectsWithColumns(actividadesRows, SHEET_COLUMNS.ACTIVIDADES);
+  const actores = rowsToObjectsWithColumns(actoresRows, SHEET_COLUMNS.ACTIVIDAD_ACTOR);
+  const adjuntos = rowsToObjectsWithColumns(adjuntosRows, SHEET_COLUMNS.ADJUNTOS_ACTIVIDADES);
+
+  const actoresByActividad = groupByKey(actores, 'id_actividad');
+  const adjuntosByActividad = groupByKey(adjuntos, 'id_actividad');
+
+  return sortActividadesByProcesoYOrden(
+    actividades.map((actividad) => {
+      const actividadId = String(actividad.id ?? '').trim();
+
+      return {
+        ...actividad,
+        actores: actoresByActividad[actividadId] || [],
+        adjuntos: adjuntosByActividad[actividadId] || [],
+      };
+    })
+  );
 }
 
 const getAllSheetsData = async (req, res) => {
@@ -166,6 +279,84 @@ const getMySolicitudes = async (req, res) => {
     return res.status(200).json({ status: true, data: sheetValuesToObject(values) });
   } catch (error) {
     console.error('Error obteniendo solicitudes del usuario:', error);
+    return res.status(400).json({ status: false, message: error.message });
+  }
+};
+
+const getActividades = async (req, res) => {
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.spreadsheet;
+
+    const actividades = await getActividadesConRelaciones(sheets, spreadsheetId);
+
+    return res.status(200).json({ status: true, data: actividades });
+  } catch (error) {
+    console.error('Error obteniendo actividades:', error);
+    return res.status(400).json({ status: false, message: error.message });
+  }
+};
+
+const getProcesos = async (req, res) => {
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.spreadsheet;
+
+    const [procesosRows, actividades] = await Promise.all([
+      getSheetRows(sheets, spreadsheetId, 'PROCESOS'),
+      getActividadesConRelaciones(sheets, spreadsheetId),
+    ]);
+
+    const procesos = rowsToObjectsWithColumns(procesosRows, SHEET_COLUMNS.PROCESOS);
+    const actividadesByProceso = groupByKey(actividades, 'id_proceso');
+
+    const procesosConActividades = procesos.map((proceso) => {
+      const procesoId = String(proceso.id ?? '').trim();
+      return {
+        ...proceso,
+        actividades: sortActividadesByOrden(actividadesByProceso[procesoId] || []),
+      };
+    });
+
+    return res.status(200).json({ status: true, data: procesosConActividades });
+  } catch (error) {
+    console.error('Error obteniendo procesos:', error);
+    return res.status(400).json({ status: false, message: error.message });
+  }
+};
+
+const getProcesoById = async (req, res) => {
+  try {
+    const { idProceso } = req.params;
+    if (!idProceso) {
+      return res.status(400).json({ status: false, message: 'Debes enviar idProceso.' });
+    }
+
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.spreadsheet;
+
+    const [procesosRows, actividades] = await Promise.all([
+      getSheetRows(sheets, spreadsheetId, 'PROCESOS'),
+      getActividadesConRelaciones(sheets, spreadsheetId),
+    ]);
+
+    const procesos = rowsToObjectsWithColumns(procesosRows, SHEET_COLUMNS.PROCESOS);
+    const actividadesByProceso = groupByKey(actividades, 'id_proceso');
+    const procesoId = String(idProceso).trim();
+
+    const proceso = procesos.find((item) => String(item.id ?? '').trim() === procesoId);
+    if (!proceso) {
+      return res.status(404).json({ status: false, message: 'Proceso no encontrado.' });
+    }
+
+    const procesoConActividades = {
+      ...proceso,
+      actividades: sortActividadesByOrden(actividadesByProceso[procesoId] || []),
+    };
+
+    return res.status(200).json({ status: true, data: procesoConActividades });
+  } catch (error) {
+    console.error('Error obteniendo proceso:', error);
     return res.status(400).json({ status: false, message: error.message });
   }
 };
@@ -272,13 +463,14 @@ const updateRegistroAprobado = async (req, res) => {
   try {
     const spreadsheetId = process.env.spreadsheet;
     const sheetName = 'REGISTROS';
-    const { idSolicitud, idEtapa } = req.params;
+    const { idSolicitud } = req.params;
+    const idActividad = req.params.idActividad || req.params.idEtapa;
     const { aprobado, valueInputOption = 'USER_ENTERED' } = req.body;
 
-    if (!idSolicitud || !idEtapa) {
+    if (!idSolicitud || !idActividad) {
       return res.status(400).json({
         status: false,
-        message: 'Debes enviar idSolicitud e idEtapa en la ruta.',
+        message: 'Debes enviar idSolicitud e idActividad en la ruta.',
       });
     }
 
@@ -301,13 +493,13 @@ const updateRegistroAprobado = async (req, res) => {
 
     const rowNumber = findRowNumber(rows, (row) => {
       return String(row[SHEET_COLUMNS.REGISTROS.id] || '') === String(idSolicitud) &&
-        String(row[SHEET_COLUMNS.REGISTROS.id_etapa] || '') === String(idEtapa);
+        String(row[SHEET_COLUMNS.REGISTROS.id_actividad] || '') === String(idActividad);
     });
 
     if (rowNumber === -1) {
       return res.status(404).json({
         status: false,
-        message: 'No se encontro el registro con idSolicitud y idEtapa.',
+        message: 'No se encontro el registro con idSolicitud y idActividad.',
       });
     }
 
@@ -336,13 +528,14 @@ const updateRegistroObservacion = async (req, res) => {
   try {
     const spreadsheetId = process.env.spreadsheet;
     const sheetName = 'REGISTROS';
-    const { idSolicitud, idEtapa } = req.params;
+    const { idSolicitud } = req.params;
+    const idActividad = req.params.idActividad || req.params.idEtapa;
     const { observacion, valueInputOption = 'USER_ENTERED' } = req.body;
 
-    if (!idSolicitud || !idEtapa) {
+    if (!idSolicitud || !idActividad) {
       return res.status(400).json({
         status: false,
-        message: 'Debes enviar idSolicitud e idEtapa en la ruta.',
+        message: 'Debes enviar idSolicitud e idActividad en la ruta.',
       });
     }
 
@@ -365,13 +558,13 @@ const updateRegistroObservacion = async (req, res) => {
 
     const rowNumber = findRowNumber(rows, (row) => {
       return String(row[SHEET_COLUMNS.REGISTROS.id] || '') === String(idSolicitud) &&
-        String(row[SHEET_COLUMNS.REGISTROS.id_etapa] || '') === String(idEtapa);
+        String(row[SHEET_COLUMNS.REGISTROS.id_actividad] || '') === String(idActividad);
     });
 
     if (rowNumber === -1) {
       return res.status(404).json({
         status: false,
-        message: 'No se encontro el registro con idSolicitud y idEtapa.',
+        message: 'No se encontro el registro con idSolicitud y idActividad.',
       });
     }
 
@@ -400,13 +593,14 @@ const updateRegistroUrl = async (req, res) => {
   try {
     const spreadsheetId = process.env.spreadsheet;
     const sheetName = 'REGISTROS';
-    const { idSolicitud, idEtapa } = req.params;
+    const { idSolicitud } = req.params;
+    const idActividad = req.params.idActividad || req.params.idEtapa;
     const { url, valueInputOption = 'USER_ENTERED' } = req.body;
 
-    if (!idSolicitud || !idEtapa) {
+    if (!idSolicitud || !idActividad) {
       return res.status(400).json({
         status: false,
-        message: 'Debes enviar idSolicitud e idEtapa en la ruta.',
+        message: 'Debes enviar idSolicitud e idActividad en la ruta.',
       });
     }
 
@@ -429,13 +623,13 @@ const updateRegistroUrl = async (req, res) => {
 
     const rowNumber = findRowNumber(rows, (row) => {
       return String(row[SHEET_COLUMNS.REGISTROS.id] || '') === String(idSolicitud) &&
-        String(row[SHEET_COLUMNS.REGISTROS.id_etapa] || '') === String(idEtapa);
+        String(row[SHEET_COLUMNS.REGISTROS.id_actividad] || '') === String(idActividad);
     });
 
     if (rowNumber === -1) {
       return res.status(404).json({
         status: false,
-        message: 'No se encontro el registro con idSolicitud y idEtapa.',
+        message: 'No se encontro el registro con idSolicitud y idActividad.',
       });
     }
 
@@ -465,7 +659,7 @@ const updateSolicitudEtapa = async (req, res) => {
     const spreadsheetId = process.env.spreadsheet;
     const sheetName = 'SOLICITUDES';
     const { idSolicitud } = req.params;
-    const { etapa_actual, fecha, valueInputOption = 'USER_ENTERED' } = req.body;
+    const { actividad_actual, fecha, valueInputOption = 'USER_ENTERED' } = req.body;
 
     if (!idSolicitud) {
       return res.status(400).json({
@@ -474,10 +668,10 @@ const updateSolicitudEtapa = async (req, res) => {
       });
     }
 
-    if (etapa_actual === undefined && !fecha) {
+    if (actividad_actual === undefined && !fecha) {
       return res.status(400).json({
         status: false,
-        message: 'Debes enviar etapa_actual y/o fecha en el body.',
+        message: 'Debes enviar actividad_actual y/o fecha en el body.',
       });
     }
 
@@ -504,11 +698,11 @@ const updateSolicitudEtapa = async (req, res) => {
 
     const updates = [];
 
-    if (etapa_actual !== undefined) {
-      const columnLetter = columnIndexToLetter(SHEET_COLUMNS.SOLICITUDES.etapa_actual);
+    if (actividad_actual !== undefined) {
+      const columnLetter = columnIndexToLetter(SHEET_COLUMNS.SOLICITUDES.actividad_actual);
       updates.push({
         range: `${sheetName}!${columnLetter}${rowNumber}`,
-        values: [[etapa_actual]],
+        values: [[actividad_actual]],
       });
     }
 
@@ -557,6 +751,9 @@ const updateSolicitudEtapa = async (req, res) => {
 module.exports = {
   getAllSheetsData,
   getMySolicitudes,
+  getActividades,
+  getProcesos,
+  getProcesoById,
   updateRegistroAprobado,
   updateRegistroObservacion,
   updateRegistroUrl,
