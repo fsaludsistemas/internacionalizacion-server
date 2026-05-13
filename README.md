@@ -1,3 +1,18 @@
+# ¿Qué es este sistema?
+
+**internacionalizacion-server** es el backend del proyecto de internacionalización, encargado de gestionar y exponer una API REST para la administración de procesos, actividades, solicitudes y usuarios relacionados con la internacionalización académica. El sistema se conecta a hojas de cálculo de Google Sheets, que funcionan como base de datos, permitiendo la lectura y actualización de información relevante para los distintos actores del proceso.
+
+# ¿Para qué sirve?
+
+Este sistema permite:
+
+- Consultar y actualizar información de procesos, actividades, solicitudes y registros de internacionalización.
+- Gestionar usuarios, actores y adjuntos asociados a las actividades.
+- Facilitar la integración con Google Sheets para mantener la información centralizada y accesible.
+- Proveer endpoints seguros para que los usuarios autenticados puedan interactuar con los datos según su rol.
+
+Es ideal para instituciones educativas que requieren digitalizar y automatizar el seguimiento de procesos de internacionalización, manteniendo trazabilidad y control sobre cada etapa y actor involucrado.
+
 # internacionalizacion-server
 Repositorio para la parte backend del proyecto.
 
