@@ -1,7 +1,10 @@
 const { google } = require('googleapis');
 const { sheetRanges } = require('../config/sheetRanges');
 const { jwtClient, ensureGoogleJwtAuth } = require('../config/google');
-const { sendSolicitudNotification } = require('../services/sendEmail');
+const {
+  sendNuevoProcesoNotification,
+  sendCambioActividadNotification,
+} = require('../services/sendEmail');
 require('dotenv').config();
 
 function sheetValuesToObject(values = []) {
@@ -35,18 +38,6 @@ function buildRange(sheetName, range) {
   return `${sheetName}!${range}`;
 }
 
-function getSolicitudUserEmail(req, solicitudRow) {
-  if (req.user?.email) {
-    return req.user.email;
-  }
-
-  if (Number.isInteger(req.body.userEmailColumnIndex)) {
-    return solicitudRow[req.body.userEmailColumnIndex] || '';
-  }
-
-  return '';
-}
-
 function formatSolicitudFechaHora(rawFecha) {
   const now = new Date();
 
@@ -67,12 +58,21 @@ function formatSolicitudFechaHora(rawFecha) {
   return `${rawText} ${now.toLocaleTimeString('es-CO')}`;
 }
 
-async function getSolicitudProcesoYActividad(sheets, spreadsheetId, solicitudRow) {
-  const procesoId = String(solicitudRow[SHEET_COLUMNS.SOLICITUDES.id_proceso] ?? '').trim();
-  const actividadValue = String(
-    solicitudRow[SHEET_COLUMNS.SOLICITUDES.actividad_actual] ?? ''
-  ).trim();
+async function getDatosInicialesBySolicitudId(sheets, spreadsheetId, idSolicitud) {
+  const rows = await getSheetRows(sheets, spreadsheetId, 'DATOS_INICIALES_SOLICITUD');
+  const datos = rowsToObjectsWithColumns(rows, SHEET_COLUMNS.DATOS_INICIALES_SOLICITUD);
+  const targetId = String(idSolicitud ?? '').trim();
 
+  return datos.find((item) => String(item.id_solicitud ?? '').trim() === targetId);
+}
+
+async function getProcesoYActividadesInfo(
+  sheets,
+  spreadsheetId,
+  procesoId,
+  actividadAnteriorId,
+  actividadNuevaId
+) {
   const [procesosRows, actividadesRows] = await Promise.all([
     getSheetRows(sheets, spreadsheetId, 'PROCESOS'),
     getSheetRows(sheets, spreadsheetId, 'ACTIVIDADES'),
@@ -82,15 +82,20 @@ async function getSolicitudProcesoYActividad(sheets, spreadsheetId, solicitudRow
   const actividades = rowsToObjectsWithColumns(actividadesRows, SHEET_COLUMNS.ACTIVIDADES);
 
   const proceso = procesos.find((item) => String(item.id ?? '').trim() === procesoId);
-  const actividad = actividades.find(
-    (item) => String(item.id ?? '').trim() === actividadValue
+  const actividadAnterior = actividades.find(
+    (item) => String(item.id ?? '').trim() === actividadAnteriorId
+  );
+  const actividadNueva = actividades.find(
+    (item) => String(item.id ?? '').trim() === actividadNuevaId
   );
 
   return {
     procesoNombre: proceso?.nombre || (procesoId ? `ID ${procesoId}` : ''),
-    actividadNombre: actividad?.nombre || actividadValue,
+    actividadAnteriorNombre: actividadAnterior?.nombre || actividadAnteriorId,
+    actividadNuevaNombre: actividadNueva?.nombre || actividadNuevaId,
   };
 }
+
 
 const SHEET_COLUMNS = {
   USUARIOS: {
@@ -139,6 +144,12 @@ const SHEET_COLUMNS = {
       id: 0,
       nombre: 1,
     },
+    DATOS_INICIALES_SOLICITUD:{
+      id: 0,
+      id_solicitud: 1,
+      nombre: 2,
+      correo: 3,
+    }
   
 };
 
@@ -505,30 +516,25 @@ const appendSheetRow = async (req, res) => {
       requestBody: { values: normalizedValues },
     });
 
-    if (sheetName === 'SOLICITUDES' && normalizedValues.length) {
+    if (sheetName === 'DATOS_INICIALES_SOLICITUD' && normalizedValues.length) {
       const solicitudRow = normalizedValues[0];
-      const solicitudId = solicitudRow[SHEET_COLUMNS.SOLICITUDES.id] || '';
-      const userEmail = getSolicitudUserEmail(req, solicitudRow);
-      const fechaHora = formatSolicitudFechaHora(
-        solicitudRow[SHEET_COLUMNS.SOLICITUDES.fecha]
-      );
+      const solicitudId = solicitudRow[SHEET_COLUMNS.DATOS_INICIALES_SOLICITUD.id_solicitud] || '';
+      const userName = solicitudRow[SHEET_COLUMNS.DATOS_INICIALES_SOLICITUD.nombre] || '';
+      const userEmail = solicitudRow[SHEET_COLUMNS.DATOS_INICIALES_SOLICITUD.correo] || '';
+      const fechaHora = formatSolicitudFechaHora();
 
-      try {
-        const { procesoNombre, actividadNombre } = await getSolicitudProcesoYActividad(
-          sheets,
-          spreadsheetId,
-          solicitudRow
-        );
-
-        await sendSolicitudNotification({
-          solicitudId,
-          userEmail,
-          proceso: procesoNombre,
-          actividad: actividadNombre,
-          fechaHora,
-        });
-      } catch (emailError) {
-        console.error('Error enviando correo de solicitud:', emailError);
+      if (userEmail) {
+        try {
+          await sendNuevoProcesoNotification({
+            to: userEmail,
+            solicitudId,
+            userName,
+            userEmail,
+            fechaHora,
+          });
+        } catch (emailError) {
+          console.error('Error enviando correo de nuevo proceso:', emailError);
+        }
       }
     }
 
@@ -782,6 +788,10 @@ const updateSolicitudEtapa = async (req, res) => {
     }
 
     const updates = [];
+    const solicitudRow = rows[rowNumber - 1] || [];
+    const actividadAnteriorId = String(
+      solicitudRow[SHEET_COLUMNS.SOLICITUDES.actividad_actual] ?? ''
+    ).trim();
 
     if (actividad_actual !== undefined) {
       const columnLetter = columnIndexToLetter(SHEET_COLUMNS.SOLICITUDES.actividad_actual);
@@ -799,6 +809,56 @@ const updateSolicitudEtapa = async (req, res) => {
       });
     }
 
+    async function maybeSendCambioActividadEmail() {
+      if (actividad_actual === undefined) {
+        return;
+      }
+
+      const actividadNuevaId = String(actividad_actual ?? '').trim();
+      if (!actividadNuevaId || actividadNuevaId === actividadAnteriorId) {
+        return;
+      }
+
+      try {
+        const datosIniciales = await getDatosInicialesBySolicitudId(
+          sheets,
+          spreadsheetId,
+          idSolicitud
+        );
+
+        const userEmail = datosIniciales?.correo || '';
+        if (!userEmail) {
+          return;
+        }
+
+        const userName = datosIniciales?.nombre || '';
+        const procesoId = String(solicitudRow[SHEET_COLUMNS.SOLICITUDES.id_proceso] ?? '').trim();
+        const { procesoNombre, actividadAnteriorNombre, actividadNuevaNombre } =
+          await getProcesoYActividadesInfo(
+            sheets,
+            spreadsheetId,
+            procesoId,
+            actividadAnteriorId,
+            actividadNuevaId
+          );
+
+        const fechaHoraNotificacion = formatSolicitudFechaHora(fecha);
+
+        await sendCambioActividadNotification({
+          to: userEmail,
+          solicitudId: idSolicitud,
+          userName,
+          userEmail,
+          proceso: procesoNombre,
+          actividadAnterior: actividadAnteriorNombre,
+          actividadNueva: actividadNuevaNombre,
+          fechaHora: fechaHoraNotificacion,
+        });
+      } catch (emailError) {
+        console.error('Error enviando correo de cambio de actividad:', emailError);
+      }
+    }
+
     if (updates.length === 1) {
       const response = await sheets.spreadsheets.values.update({
         spreadsheetId,
@@ -806,6 +866,8 @@ const updateSolicitudEtapa = async (req, res) => {
         valueInputOption,
         requestBody: { values: updates[0].values },
       });
+
+      await maybeSendCambioActividadEmail();
 
       return res.status(200).json({
         status: true,
@@ -821,6 +883,8 @@ const updateSolicitudEtapa = async (req, res) => {
         data: updates,
       },
     });
+
+    await maybeSendCambioActividadEmail();
 
     return res.status(200).json({
       status: true,
