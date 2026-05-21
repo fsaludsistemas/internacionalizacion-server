@@ -4,12 +4,14 @@ const cors = require('cors');
 require('dotenv').config();
 const sheetRoutes = require('./src/routes/sheet.route');
 const authRoutes = require('./src/routes/auth.route');
+const { runRecordatoriosCron } = require('./src/controllers/cronController');
 const { requireAuth } = require('./src/middlewares/authMiddleware');
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
 app.use('/api/auth', authRoutes);
+app.get('/api/cron/recordatorios', runRecordatoriosCron);
 app.use('/api/sheets', requireAuth, sheetRoutes);
 
 const PORT = process.env.PORT || 3000;

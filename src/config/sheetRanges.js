@@ -6,6 +6,8 @@ const sheetRanges = {
   ACTIVIDAD_ACTOR: 'A1:C50',
   PROCESOS: 'A1:B50',
   ADJUNTOS_ACTIVIDADES: 'A1:C50',
+  DATOS_INICIALES_SOLICITUD: 'A1:D50',
+  RECORDATORIOS: 'A1:C50',
 };
 
 module.exports = {
