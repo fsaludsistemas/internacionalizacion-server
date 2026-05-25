@@ -4,6 +4,7 @@ const { jwtClient, ensureGoogleJwtAuth } = require('../config/google');
 const {
   sendNuevoProcesoNotification,
   sendCambioActividadNotification,
+  sendProcesoFinalizadoNotification,
 } = require('../services/sendEmail');
 require('dotenv').config();
 
@@ -66,6 +67,41 @@ async function getDatosInicialesBySolicitudId(sheets, spreadsheetId, idSolicitud
   return datos.find((item) => String(item.id_solicitud ?? '').trim() === targetId);
 }
 
+async function getProcesoNombreBySolicitudId(sheets, spreadsheetId, idSolicitud) {
+  const [solicitudesRows, procesosRows] = await Promise.all([
+    getSheetRows(sheets, spreadsheetId, 'SOLICITUDES'),
+    getSheetRows(sheets, spreadsheetId, 'PROCESOS'),
+  ]);
+
+  const solicitudes = rowsToObjectsWithColumns(solicitudesRows, SHEET_COLUMNS.SOLICITUDES);
+  const procesos = rowsToObjectsWithColumns(procesosRows, SHEET_COLUMNS.PROCESOS);
+  const targetId = String(idSolicitud ?? '').trim();
+  const solicitud = solicitudes.find((item) => String(item.id ?? '').trim() === targetId);
+  const procesoId = String(solicitud?.id_proceso ?? '').trim();
+  const proceso = procesos.find((item) => String(item.id ?? '').trim() === procesoId);
+
+  return proceso?.nombre || (procesoId ? `ID ${procesoId}` : '');
+}
+
+async function getRegistroCorreoExtra(sheets, spreadsheetId, idSolicitud, idActividad) {
+  const rows = await getSheetRows(sheets, spreadsheetId, 'REGISTROS');
+  const registros = rowsToObjectsWithColumns(rows, SHEET_COLUMNS.REGISTROS, {
+    idKey: 'id',
+    skipEmpty: true,
+  });
+
+  const solicitudIdText = String(idSolicitud ?? '').trim();
+  const actividadIdText = String(idActividad ?? '').trim();
+
+  const registro = registros.find(
+    (item) =>
+      String(item.id ?? '').trim() === solicitudIdText &&
+      String(item.id_actividad ?? '').trim() === actividadIdText
+  );
+
+  return registro?.correo_extra || '';
+}
+
 async function getProcesoYActividadesInfo(
   sheets,
   spreadsheetId,
@@ -80,6 +116,7 @@ async function getProcesoYActividadesInfo(
 
   const procesos = rowsToObjectsWithColumns(procesosRows, SHEET_COLUMNS.PROCESOS);
   const actividades = rowsToObjectsWithColumns(actividadesRows, SHEET_COLUMNS.ACTIVIDADES);
+  const actividadesOrdenadas = sortActividadesByProcesoYOrden(actividades);
 
   const proceso = procesos.find((item) => String(item.id ?? '').trim() === procesoId);
   const actividadAnterior = actividades.find(
@@ -88,11 +125,22 @@ async function getProcesoYActividadesInfo(
   const actividadNueva = actividades.find(
     (item) => String(item.id ?? '').trim() === actividadNuevaId
   );
+  const actividadAnteriorIndex = actividadesOrdenadas.findIndex(
+    (item) => String(item.id ?? '').trim() === actividadAnteriorId
+  );
+  const actividadSiguiente =
+    actividadAnteriorIndex >= 0 ? actividadesOrdenadas[actividadAnteriorIndex + 1] : null;
+  const actividadAnteriorProcesoId = String(actividadAnterior?.id_proceso ?? '').trim();
+  const actividadSiguienteProcesoId = String(actividadSiguiente?.id_proceso ?? '').trim();
+  const actividadAnteriorEsUltima =
+    !actividadSiguiente || actividadSiguienteProcesoId !== actividadAnteriorProcesoId;
 
   return {
     procesoNombre: proceso?.nombre || (procesoId ? `ID ${procesoId}` : ''),
     actividadAnteriorNombre: actividadAnterior?.nombre || actividadAnteriorId,
     actividadNuevaNombre: actividadNueva?.nombre || actividadNuevaId,
+    actividadNuevaArchivos: actividadNueva?.archivos || '',
+    actividadAnteriorEsUltima,
   };
 }
 
@@ -114,6 +162,7 @@ const SHEET_COLUMNS = {
     observacion: 5,
     aprobado: 6,
     url: 7,
+    correo_extra: 8,
   },
   SOLICITUDES: {
     id: 0,
@@ -129,6 +178,7 @@ const SHEET_COLUMNS = {
     nombre: 3,
     tiempo_max: 4,
     orden: 5,
+    archivos:6
   },
   ADJUNTOS_ACTIVIDADES: {
     id: 0,
@@ -149,6 +199,11 @@ const SHEET_COLUMNS = {
       id_solicitud: 1,
       nombre: 2,
       correo: 3,
+      programa: 4,
+    },
+    PROGRAMAS:{
+      id: 0,
+      nombre: 1,
     }
   
 };
@@ -525,12 +580,18 @@ const appendSheetRow = async (req, res) => {
 
       if (userEmail) {
         try {
+          const procesoNombre = await getProcesoNombreBySolicitudId(
+            sheets,
+            spreadsheetId,
+            solicitudId
+          );
           await sendNuevoProcesoNotification({
             to: userEmail,
             solicitudId,
             userName,
             userEmail,
             fechaHora,
+            proceso: procesoNombre,
           });
         } catch (emailError) {
           console.error('Error enviando correo de nuevo proceso:', emailError);
@@ -833,27 +894,53 @@ const updateSolicitudEtapa = async (req, res) => {
 
         const userName = datosIniciales?.nombre || '';
         const procesoId = String(solicitudRow[SHEET_COLUMNS.SOLICITUDES.id_proceso] ?? '').trim();
-        const { procesoNombre, actividadAnteriorNombre, actividadNuevaNombre } =
-          await getProcesoYActividadesInfo(
-            sheets,
-            spreadsheetId,
-            procesoId,
-            actividadAnteriorId,
-            actividadNuevaId
-          );
+        const {
+          procesoNombre,
+          actividadAnteriorNombre,
+          actividadNuevaNombre,
+          actividadNuevaArchivos,
+          actividadAnteriorEsUltima,
+        } = await getProcesoYActividadesInfo(
+          sheets,
+          spreadsheetId,
+          procesoId,
+          actividadAnteriorId,
+          actividadNuevaId
+        );
 
         const fechaHoraNotificacion = formatSolicitudFechaHora(fecha);
+        const isFinalActivityCompleted = actividadAnteriorId && actividadAnteriorEsUltima;
 
-        await sendCambioActividadNotification({
-          to: userEmail,
-          solicitudId: idSolicitud,
-          userName,
-          userEmail,
-          proceso: procesoNombre,
-          actividadAnterior: actividadAnteriorNombre,
-          actividadNueva: actividadNuevaNombre,
-          fechaHora: fechaHoraNotificacion,
-        });
+        if (isFinalActivityCompleted) {
+          const correoExtra = await getRegistroCorreoExtra(
+            sheets,
+            spreadsheetId,
+            idSolicitud,
+            actividadAnteriorId
+          );
+
+          await sendProcesoFinalizadoNotification({
+            to: userEmail,
+            solicitudId: idSolicitud,
+            userName,
+            userEmail,
+            proceso: procesoNombre,
+            fechaHora: fechaHoraNotificacion,
+            extraCc: correoExtra,
+          });
+        } else {
+          await sendCambioActividadNotification({
+            to: userEmail,
+            solicitudId: idSolicitud,
+            userName,
+            userEmail,
+            proceso: procesoNombre,
+            actividadAnterior: actividadAnteriorNombre,
+            actividadNueva: actividadNuevaNombre,
+            actividadNuevaArchivos,
+            fechaHora: fechaHoraNotificacion,
+          });
+        }
       } catch (emailError) {
         console.error('Error enviando correo de cambio de actividad:', emailError);
       }
