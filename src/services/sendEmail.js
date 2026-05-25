@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-const CORREO_DRI="brs77ortiz@hotmail.com"
+const CORREO_DRI=process.env.EMAIL_DRI;
 
 let cachedTransporter;
 
