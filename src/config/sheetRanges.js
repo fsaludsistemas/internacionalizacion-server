@@ -1,5 +1,5 @@
 const sheetRanges = {
-  USUARIOS: 'A1:E4',
+  USUARIOS: 'A1:E30',
   REGISTROS: 'A1:I50',
   SOLICITUDES: 'A1:E50',
   ACTIVIDADES: 'A1:G80',
