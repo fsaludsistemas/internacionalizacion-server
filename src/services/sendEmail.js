@@ -251,6 +251,22 @@ function buildCambioActividadEmail({
 		`<p><strong>Proceso:</strong> ${safeProceso}</p>`,
 		`<p><strong>Actividad anterior:</strong> ${safeAnterior}</p>`,
 		`<p><strong>Actividad nueva:</strong> ${safeNueva}</p>`,
+		`<p style="margin:0px;" ><strong>Esther Cecilia Wilches Luna</strong></p>
+		<p style="margin:0px;">Coordinadora</p>
+		<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+
+			<p style="margin-bottom:0px;"><strong>Mónica María Durán Salas</strong></p>
+			<p style="margin:0px;">Profesional</p>
+			<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+			<p style="margin:0px;">Número telefónico: (57 - 602) 3212100 Ext. 4072</p>
+			<p style="margin:0px;">https://internacionalessalud.univalle.edu.co/movilidad-internacional</p>
+			`,
+		`<img src="cid:logoUnivalle" alt="Logo Univalle" />`,
+			`<p style="margin:0px;" >Horario de atención:</p>`,
+			`<p style="margin:0px;" >Lunes a Viernes de 8:00 a.m. a 12:00 m. - 2:00 p.m. a 5:00 p.m.</p>`,
+			`<p style="margin:0px;" > Hora Colombia, Bogotá GMT-5 </p>`,
+			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.
+`,
 	];
 
 	if (archivosBlocks.html) {
@@ -316,6 +332,22 @@ function buildProcesoFinalizadoEmail({ solicitudId, userName, userEmail, proceso
 		 <strong> Felicitaciones ${safeUserName}</strong>, su solicitud del proceso <strong>${procesoLabel}</strong> ha finalizado satisfactoriamente y ya fue revisada por todas las partes.</p>`,
 		`<p><strong>Correo registrado:</strong> ${safeUserEmail}</p>`,
 		`<p><strong>Proceso:</strong> ${procesoLabel}</p>`,
+		`<p style="margin:0px;" ><strong>Esther Cecilia Wilches Luna</strong></p>
+		<p style="margin:0px;">Coordinadora</p>
+		<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+
+			<p style="margin-bottom:0px;"><strong>Mónica María Durán Salas</strong></p>
+			<p style="margin:0px;">Profesional</p>
+			<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+			<p style="margin:0px;">Número telefónico: (57 - 602) 3212100 Ext. 4072</p>
+			<p style="margin:0px;">https://internacionalessalud.univalle.edu.co/movilidad-internacional</p>
+			`,
+		`<img src="cid:logoUnivalle" alt="Logo Univalle" />`,
+			`<p style="margin:0px;" >Horario de atención:</p>`,
+			`<p style="margin:0px;" >Lunes a Viernes de 8:00 a.m. a 12:00 m. - 2:00 p.m. a 5:00 p.m.</p>`,
+			`<p style="margin:0px;" > Hora Colombia, Bogotá GMT-5 </p>`,
+			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.
+`,
 	].join('');
 
 	return { subject, text, html };
@@ -385,6 +417,22 @@ function buildRecordatorioEmail({
 		`<p><strong>Actividad actual:</strong> ${safeActividad}</p>`,
 		`<p><strong>Tiempo maximo (dias):</strong> ${safeMaxDias}</p>`,
 		`<p><strong>Fecha de vencimiento:</strong> ${safeVencimiento}</p>`,
+		`<p style="margin:0px;" ><strong>Esther Cecilia Wilches Luna</strong></p>
+		<p style="margin:0px;">Coordinadora</p>
+		<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+
+			<p style="margin-bottom:0px;"><strong>Mónica María Durán Salas</strong></p>
+			<p style="margin:0px;">Profesional</p>
+			<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+			<p style="margin:0px;">Número telefónico: (57 - 602) 3212100 Ext. 4072</p>
+			<p style="margin:0px;">https://internacionalessalud.univalle.edu.co/movilidad-internacional</p>
+			`,
+		`<img src="cid:logoUnivalle" alt="Logo Univalle" />`,
+			`<p style="margin:0px;" >Horario de atención:</p>`,
+			`<p style="margin:0px;" >Lunes a Viernes de 8:00 a.m. a 12:00 m. - 2:00 p.m. a 5:00 p.m.</p>`,
+			`<p style="margin:0px;" > Hora Colombia, Bogotá GMT-5 </p>`,
+			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.
+`,
 	].join('');
 
 	return { subject, text, html };
