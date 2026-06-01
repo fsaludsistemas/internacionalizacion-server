@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
+const path = require('path');
 
 const CORREO_DRI=process.env.EMAIL_DRI;
 
@@ -36,7 +37,13 @@ function getFromAddress() {
 	return `${displayName} <${baseEmail}>`;
 }
 
-async function sendEmail({ to, cc, subject, text, html }) {
+const attachments = [{
+	filename: 'imagen_firma.png',
+	path: path.join(__dirname, '../assets/imagen_firma.png'), // Ajusta la ruta según tu estructura
+	cid: 'logoUnivalle' // Debe coincidir con el src en el HTML
+}];
+
+async function sendEmail({ to, cc, subject, text, html, attachments }) {
 	const transporter = getTransporter();
 	const mergedCc = mergeEmailLists(cc, CORREO_DRI);
 	const ccValue = mergedCc.length ? mergedCc : undefined;
@@ -48,6 +55,7 @@ async function sendEmail({ to, cc, subject, text, html }) {
 		subject,
 		text,
 		html,
+		attachments,
 	});
 }
 
@@ -134,20 +142,41 @@ function buildNuevoProcesoEmail({ solicitudId, userName, userEmail, fechaHora, p
 	const text = [
 		`Solicitud: ${solicitudLabel}`,
 		`Cordial saludo,
-		Estimado docente ${safeUserName}, su solicitud de ${solicitudLabel} ha iniciado.`,
-		`Correo registrado: ${safeUserEmail}`,
-		`A continuación lo invitamos a diligencias los siguientes documentos.`,
+		 Estimado profesor(a) ${safeUserName}, su solicitud de ${solicitudLabel} ha iniciado.`,
+		`Para la Oficina de Asuntos Internacionales de la Facultad de Salud es grato apoyar los procesos orientados al establecimiento de nuevas alianzas de cooperación académica internacional con instituciones de gran prestigio, las cuales contribuyen al fortalecimiento de la formación académica, investigativa y de extensión de nuestra comunidad universitaria.
+		 Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales (documento). 
+		 Cualquier inquietud con gusto la atenderemos.
+		 Cordialmente, `,
+
+		
+
 	].join('\n');
 
 	const html = [
 		`<p><strong>Solicitud:</strong> ${solicitudLabel}</p>`,
 		`<p>Cordial saludo,</p>`,
-		`<p>Estimado docente <strong>${safeUserName}</strong>, su solicitud de <strong>${solicitudLabel}</strong> ha iniciado.</p>`,
-		`<p><strong>Correo registrado:</strong> ${safeUserEmail}</p>`,
+		`<p>Estimado profesor(a) <strong>${safeUserName}</strong>, su solicitud de <strong>${solicitudLabel}</strong> ha iniciado.</p>`,
+		`<p>Para la Oficina de Asuntos Internacionales de la Facultad de Salud es grato apoyar los procesos orientados al establecimiento de nuevas alianzas de cooperación académica internacional con instituciones de gran prestigio, las cuales contribuyen al fortalecimiento de la formación académica, investigativa y de extensión de nuestra comunidad universitaria.</p>`,
 		`<p>A continuación lo invitamos a diligencias los siguientes documentos.</p>`,
-		`<p><strong>Acta de reunión:</strong> <a href="https://docs.google.com/document/d/1Dw82JtNge-nBHCRHwexpv-XR9-6fTnbc/edit?usp=sharing&ouid=108217996348122292118&rtpof=true&sd=true">Acta de reunión</a></p>`,
-		`<p><strong>Formulario de solicitud:</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSdecwwM8VglB1NCrWCirJ54APkkfikHqcHLeUE-UlsOf1hJRQ/viewform">Formulario de solicitud</a></p>`,
-		`<p>Quedamos en espera de la documentación debidamente diligenciada para continuar con el proceso.</p>`,
+		`<p>Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales <a href="https://drive.google.com/file/d/1zEjWFj-rg8uK_RkB_-4SGVavAyi6TdA-/view?usp=sharing">(documento)</a></p>`,
+		`<p>Cualquier inquietud con gusto la atenderemos.</p>`,
+		`<p>Cordialmente,</p>`,
+		`<p style="margin:0px;" ><strong>Esther Cecilia Wilches Luna</strong></p>
+		<p style="margin:0px;">Coordinadora</p>
+		<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+
+			<p style="margin-bottom:0px;"><strong>Mónica María Durán Salas</strong></p>
+			<p style="margin:0px;">Profesional</p>
+			<p style="margin:0px;">Oficina de Asuntos Internacionales - Facultad de Salud</p>
+			<p style="margin:0px;">Número telefónico: (57 - 602) 3212100 Ext. 4072</p>
+			<p style="margin:0px;">https://internacionalessalud.univalle.edu.co/movilidad-internacional</p>
+			`,
+			`<img src="cid:logoUnivalle" alt="Logo Univalle" />`,
+			`<p style="margin:0px;" >Horario de atención:</p>`,
+			`<p style="margin:0px;" >Lunes a Viernes de 8:00 a.m. a 12:00 m. - 2:00 p.m. a 5:00 p.m.</p>`,
+			`<p style="margin:0px;" > Hora Colombia, Bogotá GMT-5 </p>`,
+			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.
+`,
 	].join('');
 
 	return { subject, text, html };
@@ -170,7 +199,7 @@ async function sendNuevoProcesoNotification({
 		proceso,
 	});
 
-	return sendEmail({ to, cc: getNotificationCc(cc), subject, text, html });
+	return sendEmail({ to, cc: getNotificationCc(cc), subject, text, html, attachments });
 }
 
 function buildCambioActividadEmail({
@@ -256,7 +285,7 @@ async function sendCambioActividadNotification({
 		fechaHora,
 	});
 
-	return sendEmail({ to, cc: getNotificationCc(cc), subject, text, html });
+	return sendEmail({ to, cc: getNotificationCc(cc), subject, text, html,attachments });
 }
 
 function buildProcesoFinalizadoEmail({ solicitudId, userName, userEmail, proceso, fechaHora }) {
@@ -312,7 +341,7 @@ async function sendProcesoFinalizadoNotification({
 	const mergedCc = mergeEmailLists(getNotificationCc(cc), extraCc);
 	const ccValue = mergedCc.length ? mergedCc : undefined;
 
-	return sendEmail({ to, cc: ccValue, subject, text, html });
+	return sendEmail({ to, cc: ccValue, subject, text, html, attachments });
 }
 
 function buildRecordatorioEmail({
@@ -384,7 +413,7 @@ async function sendRecordatorioNotification({
 		maxDias,
 	});
 
-	return sendEmail({ to, cc, subject, text, html });
+	return sendEmail({ to, cc, subject, text, html, attachments });
 }
 
 module.exports = {

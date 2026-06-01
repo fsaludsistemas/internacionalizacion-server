@@ -1,7 +1,10 @@
 const { google } = require('googleapis');
 require('dotenv').config();
 
-const GOOGLE_SHEETS_SCOPE = ['https://www.googleapis.com/auth/spreadsheets'];
+const GOOGLE_SCOPES = [
+	'https://www.googleapis.com/auth/spreadsheets',
+	'https://www.googleapis.com/auth/drive',
+];
 
 function getServiceAccountCredentials() {
 	if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
@@ -45,7 +48,7 @@ if (!clientEmail || !privateKey) {
 const jwtClient = new google.auth.JWT({
 	email: clientEmail,
 	key: privateKey,
-	scopes: GOOGLE_SHEETS_SCOPE,
+	scopes: GOOGLE_SCOPES,
 });
 
 let authPromise;
