@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { Readable } = require('stream');
 const { sheetRanges } = require('../config/sheetRanges');
 const { jwtClient, ensureGoogleJwtAuth } = require('../config/google');
 const {
@@ -29,6 +30,22 @@ function sheetValuesToObject(values = []) {
 async function getSheetsClient() {
   await ensureGoogleJwtAuth();
   return google.sheets({ version: 'v4', auth: jwtClient });
+}
+
+async function getDriveClient() {
+  await ensureGoogleJwtAuth();
+  return google.drive({ version: 'v3', auth: jwtClient });
+}
+
+function getDriveFolderId() {
+  return process.env.GOOGLE_DRIVE_FOLDER_ID || process.env.DRIVE_FOLDER_ID || '';
+}
+
+function resolveUploadFileName(req, file) {
+  const candidate =
+    req.body?.nombre || req.body?.name || req.body?.filename || file?.originalname || 'documento';
+  const normalized = String(candidate || '').trim();
+  return normalized || 'documento';
 }
 
 function buildRange(sheetName, range) {
@@ -178,7 +195,9 @@ const SHEET_COLUMNS = {
     nombre: 3,
     tiempo_max: 4,
     orden: 5,
-    archivos:6
+    archivos:6,
+    docente:7,
+    adjuntos:8,
   },
   ADJUNTOS_ACTIVIDADES: {
     id: 0,
@@ -204,7 +223,13 @@ const SHEET_COLUMNS = {
     PROGRAMAS:{
       id: 0,
       nombre: 1,
-    }
+    },
+    DOCUMENTOS:{
+      id: 0,
+      id_registro: 1,
+      url: 2,
+      fecha_subida: 3,
+    },
   
 };
 
@@ -984,6 +1009,74 @@ const updateSolicitudEtapa = async (req, res) => {
   }
 };
 
+const uploadDocumentoDrive = async (req, res) => {
+  try {
+    const folderId = getDriveFolderId();
+    if (!folderId) {
+      return res.status(500).json({
+        status: false,
+        message: 'Falta GOOGLE_DRIVE_FOLDER_ID o DRIVE_FOLDER_ID en variables de entorno.',
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        status: false,
+        message: 'Debes enviar un archivo en el campo "file".',
+      });
+    }
+
+    const drive = await getDriveClient();
+    const fileName = resolveUploadFileName(req, req.file);
+
+    const createResponse = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId],
+      },
+      media: {
+        mimeType: req.file.mimetype || 'application/octet-stream',
+        body: Readable.from(req.file.buffer),
+      },
+      fields: 'id,name,webViewLink,webContentLink,mimeType,thumbnailLink',
+      supportsAllDrives: true,
+    });
+
+    const fileId = createResponse.data.id;
+
+    if (fileId) {
+      await drive.permissions.create({
+        fileId,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+        supportsAllDrives: true,
+      });
+    }
+
+    const url =
+      createResponse.data.webViewLink ||
+      createResponse.data.webContentLink ||
+      (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '');
+
+    return res.status(201).json({
+      status: true,
+      message: 'Archivo cargado correctamente.',
+      data: {
+        id: fileId,
+        name: createResponse.data.name,
+        url,
+        mimeType: createResponse.data.mimeType,
+        thumbnailLink: createResponse.data.thumbnailLink || '',
+      },
+    });
+  } catch (error) {
+    console.error('Error subiendo archivo a Drive:', error);
+    return res.status(400).json({ status: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllSheetsData,
   getMySolicitudes,
@@ -994,6 +1087,7 @@ module.exports = {
   updateRegistroObservacion,
   updateRegistroUrl,
   updateSolicitudEtapa,
+  uploadDocumentoDrive,
   updateSheetData,
   appendSheetRow,
 };

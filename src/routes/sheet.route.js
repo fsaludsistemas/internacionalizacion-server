@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const {
 	getAllSheetsData,
 	getMySolicitudes,
@@ -9,11 +10,13 @@ const {
 	updateRegistroObservacion,
 	updateRegistroUrl,
 	updateSolicitudEtapa,
+	uploadDocumentoDrive,
 	updateSheetData,
 	appendSheetRow,
 } = require('../controllers/sheetsController');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/', getAllSheetsData);
 router.get('/solicitudes/mias', getMySolicitudes);
@@ -28,6 +31,7 @@ router.patch('/registros/:idSolicitud/actividades/:idActividad/observacion', upd
 router.patch('/registros/:idSolicitud/actividades/:idActividad/url', updateRegistroUrl);
 router.patch('/solicitudes/:idSolicitud/etapa', updateSolicitudEtapa);
 router.patch('/solicitudes/:idSolicitud/actividad', updateSolicitudEtapa);
+router.post('/documentos/upload', upload.single('file'), uploadDocumentoDrive);
 router.put('/:sheetName', updateSheetData);
 router.post('/:sheetName/rows', appendSheetRow);
 

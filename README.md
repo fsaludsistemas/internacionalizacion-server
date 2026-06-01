@@ -32,6 +32,7 @@ Base: `/api/sheets`
 	- `aprobado`, `observacion`, `url`
 - `PATCH /solicitudes/:idSolicitud/etapa` -> Ruta antigua (compatibilidad).
 - `PATCH /solicitudes/:idSolicitud/actividad` -> Ruta nueva.
+- `POST /documentos/upload` -> Carga un archivo en Google Drive (multipart, campo `file`).
 - `PUT /:sheetName` -> Actualiza rango especifico.
 - `POST /:sheetName/rows` -> Agrega filas.
 
@@ -78,6 +79,7 @@ Los endpoints de procesos agregan `actividades` (con actores y adjuntos) y las o
 - `spreadsheet`: ID de la hoja de calculo.
 - `GOOGLE_SERVICE_ACCOUNT_KEY` o `GOOGLE_SERVICE_ACCOUNT_JSON`: JSON completo de la cuenta de servicio.
 - `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_PROJECT_ID`: alternativas si no se usa JSON completo.
+- `GOOGLE_DRIVE_FOLDER_ID` (o `DRIVE_FOLDER_ID`): carpeta de Drive donde se guardan los documentos.
 - `GOOGLE_WEB_CLIENT_ID`: client ID para validar el ID token del login con Google.
 - `APP_JWT_SECRET`: firma del JWT interno.
 - `EMAIL`, `EMAIL_PASSWORD`: cuenta de Gmail usada para enviar correos.
