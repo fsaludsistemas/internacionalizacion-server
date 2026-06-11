@@ -39,7 +39,7 @@ const googleLogin = async (req, res) => {
         message: 'Falta APP_JWT_SECRET en variables de entorno.',
       });
     }
-
+    console.log('Usuario autenticado con Google:', payload.email);
     const appToken = jwt.sign(
       {
         sub: payload.sub,
@@ -60,6 +60,7 @@ const googleLogin = async (req, res) => {
         picture: payload.picture || '',
       },
     });
+    console.log('Usuario autenticado con Google:', payload.email);
   } catch (error) {
     console.error('Error en autenticacion Google:', error);
     return res.status(401).json({
