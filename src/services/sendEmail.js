@@ -140,11 +140,10 @@ function buildNuevoProcesoEmail({ solicitudId, userName, userEmail, fechaHora, p
 	const solicitudLabel = safeSolicitudId || 'No informada';
 
 	const text = [
-		`Solicitud: ${solicitudLabel}`,
 		`Cordial saludo,
 		 Estimado profesor(a) ${safeUserName}, su solicitud de ${solicitudLabel} ha iniciado.`,
 		`Para la Oficina de Asuntos Internacionales de la Facultad de Salud es grato apoyar los procesos orientados al establecimiento de nuevas alianzas de cooperación académica internacional con instituciones de gran prestigio, las cuales contribuyen al fortalecimiento de la formación académica, investigativa y de extensión de nuestra comunidad universitaria.
-		 Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales (documento). 
+		 Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales (documento).
 		 Cualquier inquietud con gusto la atenderemos.
 		 Cordialmente, `,
 
@@ -153,12 +152,10 @@ function buildNuevoProcesoEmail({ solicitudId, userName, userEmail, fechaHora, p
 	].join('\n');
 
 	const html = [
-		`<p><strong>Solicitud:</strong> ${solicitudLabel}</p>`,
 		`<p>Cordial saludo,</p>`,
-		`<p>Estimado profesor(a) <strong>${safeUserName}</strong>, su solicitud de <strong>${solicitudLabel}</strong> ha iniciado.</p>`,
+		`<p>Estimado profesor(a) <strong>${safeUserName}</strong>, </p>`,
 		`<p>Para la Oficina de Asuntos Internacionales de la Facultad de Salud es grato apoyar los procesos orientados al establecimiento de nuevas alianzas de cooperación académica internacional con instituciones de gran prestigio, las cuales contribuyen al fortalecimiento de la formación académica, investigativa y de extensión de nuestra comunidad universitaria.</p>`,
-		`<p>A continuación lo invitamos a diligencias los siguientes documentos.</p>`,
-		`<p>Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales <a href="https://drive.google.com/file/d/1zEjWFj-rg8uK_RkB_-4SGVavAyi6TdA-/view?usp=sharing">(documento)</a></p>`,
+		`<p>Adjuntamos documento donde se detalla el proceso para la suscripción de Convenios Internacionales <a href="https://drive.google.com/file/d/1zEjWFj-rg8uK_RkB_-4SGVavAyi6TdA-/view?usp=sharing">(documento)</a>. Una vez haya diligenciado y suscrito el acta, recuerde por favor adjuntarla en <a href="https://internacionalizacion-salud.vercel.app/">la plataforma de convenios de la Facultad de Salud</a>.</p>`,
 		`<p>Cualquier inquietud con gusto la atenderemos.</p>`,
 		`<p>Cordialmente,</p>`,
 		`<p style="margin:0px;" ><strong>Esther Cecilia Wilches Luna</strong></p>
@@ -175,8 +172,7 @@ function buildNuevoProcesoEmail({ solicitudId, userName, userEmail, fechaHora, p
 			`<p style="margin:0px;" >Horario de atención:</p>`,
 			`<p style="margin:0px;" >Lunes a Viernes de 8:00 a.m. a 12:00 m. - 2:00 p.m. a 5:00 p.m.</p>`,
 			`<p style="margin:0px;" > Hora Colombia, Bogotá GMT-5 </p>`,
-			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.
-`,
+			 `<p><strong>AVISO LEGAL:</strong> Este mensaje y/o sus anexos son confidenciales y para uso exclusivo de su destinatario intencional. Si usted no es el destinatario, le informamos que no podrá use, retener, imprimir, copiar, distribuir o hacer público su contenido. Cualquier retención, revisión no autorizada, distribución, divulgación, reenvío, copia, impresión, reproducción o uso indebido de este mensaje y/o anexos, esté estrictamente prohibida y sancionada de acuerdo con la Ley 1273 de enero del 2009. Si ha recibido este correo por error, por favor elimínelo e infórmenos al correo internasalud@correounivalle.edu.co Si usted es el destinatario, le solicitamos mantener reserva sobre el contenido, los datos o información de contacto del remitente y en general sobre la información de este documento y/o archivos adjuntos, a no ser que exista una autorización explícita</p>.`,
 	].join('');
 
 	return { subject, text, html };
@@ -227,7 +223,7 @@ function buildCambioActividadEmail({
 	const archivosBlocks = buildArchivosBlocks(archivosList);
 
 	const textLines = [
-		`Solicitud: ${solicitudLabel}`,
+	
 		`Cordial saludo,
 		Estimado docente ${safeUserName}, su solicitud avanzo de actividad.`,
 		`Correo registrado: ${safeUserEmail}`,
@@ -244,9 +240,9 @@ function buildCambioActividadEmail({
 	const text = textLines.join('\n');
 
 	const htmlBlocks = [
-		`<p><strong>Solicitud:</strong> ${solicitudLabel}</p>`,
+
 		`<p>Cordial saludo, </p>`,
-		`<p>Estimado docente <strong>${safeUserName}</strong>, su solicitud avanzo de actividad.</p>`,
+		`<p>Estimado docente <strong>${safeUserName}</strong>, su solicitud avanzó de actividad.</p>`,
 		`<p><strong>Correo registrado:</strong> ${safeUserEmail}</p>`,
 		`<p><strong>Proceso:</strong> ${safeProceso}</p>`,
 		`<p><strong>Actividad anterior:</strong> ${safeAnterior}</p>`,
@@ -327,7 +323,6 @@ function buildProcesoFinalizadoEmail({ solicitudId, userName, userEmail, proceso
 	].join('\n');
 
 	const html = [
-		`<p><strong>Solicitud:</strong> ${solicitudLabel}</p>`,
 		`<p>Cordial Saludo,
 		 <strong> Felicitaciones ${safeUserName}</strong>, su solicitud del proceso <strong>${procesoLabel}</strong> ha finalizado satisfactoriamente y ya fue revisada por todas las partes.</p>`,
 		`<p><strong>Correo registrado:</strong> ${safeUserEmail}</p>`,
