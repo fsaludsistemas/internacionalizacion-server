@@ -230,7 +230,11 @@ const SHEET_COLUMNS = {
       url: 2,
       fecha_subida: 3,
     },
-  
+    VALIDACIONES_ACTIVIDAD:{
+      id: 0,
+      id_registro: 1,
+      diligencia_doc:2,
+    }
 };
 
 function columnIndexToLetter(index) {

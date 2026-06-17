@@ -10,6 +10,7 @@ const sheetRanges = {
   RECORDATORIOS: 'A1:C50',
   PROGRAMAS: 'A1:B90',
   DOCUMENTOS: 'A1:D50',
+  VALIDACIONES_ACTIVIDAD: 'A1:C50',
 };
 
 module.exports = {
