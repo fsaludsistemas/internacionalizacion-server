@@ -1031,12 +1031,44 @@ const uploadDocumentoDrive = async (req, res) => {
     }
 
     const drive = await getDriveClient();
+    
+    // Obtener el nombre o correo del usuario para crear/buscar su carpeta
+    const userName = (req.user?.name || req.user?.email || 'Usuario_Desconocido').trim();
+    const userProgram = (req.user?.programa || '').trim();
+    // Buscar si ya existe la carpeta del usuario dentro del folder principal
+    const escapedName = userName.replace(/'/g, "\\'");
+    const q = `mimeType = 'application/vnd.google-apps.folder' and '${folderId}' in parents and name = '${escapedName}' and trashed = false`;
+    const searchResponse = await drive.files.list({
+      q,
+      spaces: 'drive',
+      fields: 'files(id, name)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    let targetFolderId;
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      targetFolderId = searchResponse.data.files[0].id;
+    } else {
+      // Si la carpeta no existe, la creamos
+      const createFolderResponse = await drive.files.create({
+        requestBody: {
+          name: userName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [folderId],
+        },
+        fields: 'id',
+        supportsAllDrives: true,
+      });
+      targetFolderId = createFolderResponse.data.id;
+    }
+
     const fileName = resolveUploadFileName(req, req.file);
 
     const createResponse = await drive.files.create({
       requestBody: {
         name: fileName,
-        parents: [folderId],
+        parents: [targetFolderId],
       },
       media: {
         mimeType: req.file.mimetype || 'application/octet-stream',

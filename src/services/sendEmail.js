@@ -3,6 +3,8 @@ require('dotenv').config();
 const path = require('path');
 
 const CORREO_DRI=process.env.EMAIL_DRI;
+// Cambiar a true para reactivar el envío de correos.
+const EMAIL_ENABLED = false;
 
 let cachedTransporter;
 
@@ -44,6 +46,11 @@ const attachments = [{
 }];
 
 async function sendEmail({ to, cc, subject, text, html, attachments }) {
+	if (!EMAIL_ENABLED) {
+		console.warn('Envío de correos pausado: EMAIL_ENABLED no está configurado como true.');
+		return { skipped: true, reason: 'EMAIL_DISABLED' };
+	}
+
 	const transporter = getTransporter();
 	const mergedCc = mergeEmailLists(cc, CORREO_DRI);
 	const ccValue = mergedCc.length ? mergedCc : undefined;
