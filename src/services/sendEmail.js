@@ -4,7 +4,7 @@ const path = require('path');
 
 const CORREO_DRI=process.env.EMAIL_DRI;
 // Cambiar a true para reactivar el envío de correos.
-const EMAIL_ENABLED = false;
+const EMAIL_ENABLED = true;
 
 let cachedTransporter;
 
