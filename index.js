@@ -7,8 +7,27 @@ const authRoutes = require('./src/routes/auth.route');
 const { runRecordatoriosCron } = require('./src/controllers/cronController');
 const { requireAuth } = require('./src/middlewares/authMiddleware');
 const app = express();
+
+const allowedOrigins = [
+  'https://internacionalizacion-salud.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
+app.use(cors({
+  origin(origin, callback) {
+    // Permite solicitudes sin Origin (curl, cron y llamadas servidor a servidor).
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+  },
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+}));
 app.use(bodyParser.json());
-app.use(cors());
 
 app.use('/api/auth', authRoutes);
 app.get('/api/cron/recordatorios', runRecordatoriosCron);
@@ -20,6 +39,12 @@ app.get('/', (req, res) => {
   res.send('¡Servidor Express funcionando!');
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
-});
+// Vercel usa el export como handler serverless. Solo levantamos un servidor
+// cuando se ejecuta localmente con `npm start`.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
